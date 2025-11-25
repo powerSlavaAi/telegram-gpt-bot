@@ -4,7 +4,6 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram import F
-from aiogram.utils.keyboard import ReplyKeyboardMarkup
 from aiogram.client.default import DefaultBotProperties
 
 from openai import OpenAI
@@ -17,7 +16,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 
-# Новый формат инициализации!!!
 bot = Bot(
     token=TELEGRAM_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML),
@@ -35,9 +33,12 @@ async def start(message: types.Message):
 async def handle_message(message: types.Message):
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": message.text}]
+        messages=[
+            {"role": "user", "content": message.text}
+        ]
     )
-    answer = response.choices[0].message["content"]
+
+    answer = response.choices[0].message.content
     await message.answer(answer)
 
 async def main():
