@@ -2,14 +2,13 @@ import os
 import telebot
 from openai import OpenAI
 from dotenv import load_dotenv
-from telebot.types import BotCommand   # ← добавлено для меню
+from telebot.types import BotCommand
 
 load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# Включаем HTML формат сообщений
 bot = telebot.TeleBot(TELEGRAM_TOKEN, parse_mode="HTML")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -42,24 +41,12 @@ def handle_message(message):
 
         answer = response.choices[0].message.content
 
-        # 🔥 Премиальное HTML-оформление
-        formatted = f"""
-<b>🔍 Анализ:</b>
-
-<blockquote>
-{answer}
-</blockquote>
-
-<b>💡 Вывод:</b>
-<i>Если хочешь — могу рассказать подробнее или разобрать тему глубже.</i>
-"""
-
-        bot.send_message(message.chat.id, formatted)
+        # ❗ Блок оформления убран — отправляем обычный текст
+        bot.send_message(message.chat.id, answer)
 
     except Exception as e:
         error_text = str(e)
 
-        # Обработка ошибки 429
         if "429" in error_text or "rate_limit" in error_text:
             bot.send_message(
                 message.chat.id,
@@ -69,5 +56,4 @@ def handle_message(message):
 
         bot.send_message(message.chat.id, f"<i>Ошибка:</i> <code>{e}</code>")
 
-# Запуск бота
 bot.polling(none_stop=True)
