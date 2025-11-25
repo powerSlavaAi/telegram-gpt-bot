@@ -19,6 +19,7 @@ bot.set_my_commands(
         BotCommand("start", "Запустить бота"),
         BotCommand("help", "Помощь"),
         BotCommand("gpt", "Задать вопрос ИИ"),
+        BotCommand("image", "Создать картинку"),
     ]
 )
 
@@ -27,9 +28,8 @@ bot.set_my_commands(
 def start(message):
     bot.send_message(
         message.chat.id,
-        "<b>Привет!</b>\nЯ бот на GPT. Просто напиши мне любое сообщение.",
+        "<b>Привет!</b>\nЯ бот на GPT. Пиши текст, отправляй картинки или используй команды.",
     )
-
 
 # ---------- Команда /help ----------
 @bot.message_handler(commands=['help'])
@@ -40,9 +40,9 @@ def help_cmd(message):
         "/start – запуск бота\n"
         "/help – помощь\n"
         "/gpt <текст> – задать вопрос ChatGPT\n"
-        "\nПросто напиши любое сообщение, и я отвечу."
+        "/image <описание> – генерация картинки\n"
+        "\nПросто отправь фото — я проанализирую его."
     )
-
 
 # ---------- Команда /gpt ----------
 @bot.message_handler(commands=['gpt'])
@@ -55,8 +55,7 @@ def gpt_cmd(message):
 
     send_gpt_answer(message.chat.id, query)
 
-
-# ---------- Универсальная функция запроса к GPT ----------
+# ---------- Универсальная функция ответа GPT ----------
 def send_gpt_answer(chat_id, text):
     try:
         response = client.chat.completions.create(
@@ -67,31 +66,69 @@ def send_gpt_answer(chat_id, text):
         answer = response.choices[0].message.content
         bot.send_message(chat_id, answer)
 
-    except Exception as e:
-        error_text = str(e)
-
-        if "429" in error_text or "insufficient_quota" in error_text:
-            bot.send_message(
-                chat_id,
-                "⚠️ <b>Лимит OpenAI исчерпан.</b>\n"
-                "Текстовые запросы стоят мало — попробуй чуть позже."
-            )
-            return
-
+    except Exception:
         bot.send_message(chat_id, "⚠️ Ошибка. Попробуй снова позже.")
 
 
-# ---------- Обработка обычных текстовых сообщений ----------
+# ---------- Генерация изображений /image ----------
+@bot.message_handler(commands=['image'])
+def image_cmd(message):
+    prompt = message.text.replace("/image", "").strip()
+
+    if not prompt:
+        bot.send_message(message.chat.id, "❗ Напиши описание картинки после /image")
+        return
+
+    bot.send_message(message.chat.id, "⏳ Генерирую изображение...")
+
+    try:
+        img = client.images.generate(
+            model="gpt-image-1-mini",       # бесплатная модель
+            prompt=prompt,
+            size="1024x1024"
+        )
+
+        image_url = img.data[0].url
+        bot.send_photo(message.chat.id, image_url)
+
+    except Exception:
+        bot.send_message(message.chat.id, "⚠️ Ошибка генерации изображения.")
+
+
+# ---------- Анализ изображений ----------
+@bot.message_handler(content_types=['photo'])
+def photo_handler(message):
+    bot.send_message(message.chat.id, "🔍 Анализирую изображение...")
+
+    try:
+        file_id = message.photo[-1].file_id
+        file_info = bot.get_file(file_id)
+        downloaded = bot.download_file(file_info.file_path)
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_image", "image": downloaded},
+                        {"type": "text", "text": "Опиши, что изображено на фото."}
+                    ]
+                }
+            ]
+        )
+
+        answer = response.choices[0].message.content
+        bot.send_message(message.chat.id, answer)
+
+    except Exception:
+        bot.send_message(message.chat.id, "⚠️ Ошибка анализа изображения.")
+
+
+# ---------- Обработка простого текста ----------
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     send_gpt_answer(message.chat.id, message.text)
-
-
-# ---------- ВАЖНО: голос отключён полностью ----------
-# @bot.message_handler(content_types=['voice'])
-# def handle_voice(message):
-#     pass  # Отключено — чтобы не тратить квоту OpenAI
-
 
 # ---------- Запуск бота ----------
 bot.polling(none_stop=True)
