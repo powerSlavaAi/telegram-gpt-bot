@@ -33,12 +33,9 @@ async def start(message: types.Message):
 async def handle_message(message: types.Message):
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": message.text}
-        ]
+        messages=[{"role": "user", "content": message.text}]
     )
-
-    answer = response.choices[0].message.content
+    answer = response.choices[0].message["content"]
     await message.answer(answer)
 
 async def main():
