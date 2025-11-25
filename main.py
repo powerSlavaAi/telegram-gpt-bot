@@ -8,12 +8,16 @@ load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+# Включаем HTML формат сообщений
+bot = telebot.TeleBot(TELEGRAM_TOKEN, parse_mode="HTML")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.send_message(message.chat.id, "Привет! Я бот на GPT. Напиши мне что-нибудь!")
+    bot.send_message(
+        message.chat.id,
+        "<b>Привет!</b> Я бот на GPT. Напиши мне что-нибудь!"
+    )
 
 @bot.message_handler(func=lambda m: True)
 def handle_message(message):
@@ -24,18 +28,33 @@ def handle_message(message):
         )
 
         answer = response.choices[0].message.content
-        bot.send_message(message.chat.id, answer)
+
+        # 🔥 Премиальное HTML-оформление
+        formatted = f"""
+<b>🔍 Анализ:</b>
+
+<blockquote>
+{answer}
+</blockquote>
+
+<b>💡 Вывод:</b>
+<i>Если хочешь — могу рассказать подробнее или разобрать тему глубже.</i>
+"""
+
+        bot.send_message(message.chat.id, formatted)
 
     except Exception as e:
         error_text = str(e)
 
+        # Обработка ошибки 429
         if "429" in error_text or "rate_limit" in error_text:
             bot.send_message(
                 message.chat.id,
-                "⚠️ Превышен лимит запросов к OpenAI. Подожди 20–30 секунд и попробуй снова."
+                "⚠️ <b>Превышен лимит запросов к OpenAI.</b>\nПодожди 20–30 секунд и попробуй снова."
             )
             return
 
-        bot.send_message(message.chat.id, f"Ошибка: {e}")
+        bot.send_message(message.chat.id, f"<i>Ошибка:</i> <code>{e}</code>")
 
+# Запуск бота
 bot.polling(none_stop=True)
