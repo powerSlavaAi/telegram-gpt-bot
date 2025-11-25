@@ -2,6 +2,7 @@ import os
 import telebot
 from openai import OpenAI
 from dotenv import load_dotenv
+from telebot.types import BotCommand   # ← добавлено для меню
 
 load_dotenv()
 
@@ -11,6 +12,18 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Включаем HTML формат сообщений
 bot = telebot.TeleBot(TELEGRAM_TOKEN, parse_mode="HTML")
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# --- Красивое меню команд ---
+bot.set_my_commands(
+    [
+        BotCommand("start", "Запустить бота"),
+        BotCommand("help", "Помощь и описание возможностей"),
+        BotCommand("profile", "Информация о пользователе"),
+        BotCommand("gpt", "Задать вопрос ИИ"),
+        BotCommand("info", "Информация о боте"),
+    ]
+)
+# -----------------------------
 
 @bot.message_handler(commands=['start'])
 def start(message):
