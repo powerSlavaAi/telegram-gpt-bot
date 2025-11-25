@@ -22,15 +22,65 @@ bot.set_my_commands(
     ]
 )
 
-# ---------- Команда /start ----------
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.send_message(
-        message.chat.id,
-        "<b>Привет!</b>\nЯ бот на GPT. Просто напиши мне любое сообщение.",
-    )
+# ------------------- Голосовые сообщения -------------------
+@bot.message_handler(content_types=['voice'])
+def handle_voice(message):
+    try:
+        # 1. Скачиваем аудио
+        file_info = bot.get_file(message.voice.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
 
-# ---------- Обработка текстовых сообщений ----------
+        voice_path = "voice.ogg"
+        with open(voice_path, "wb") as f:
+            f.write(downloaded_file)
+
+        # 2. Распознаём речь (Whisper)
+        with open(voice_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                file=audio_file,
+                model="gpt-4o-mini-tts",  # Whisper
+                response_format="text"
+            )
+
+        text = transcript
+
+        bot.send_message(
+            message.chat.id,
+            f"<b>🎤 Вы сказали:</b> {text}"
+        )
+
+        # 3. GPT отвечает текстом
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": text}]
+        )
+
+        answer = response.choices[0].message.content
+
+        bot.send_message(
+            message.chat.id,
+            answer
+        )
+
+        # 4. Генерация голосового ответа
+        tts = client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice="alloy",
+            input=answer
+        )
+
+        audio_path = "answer.ogg"
+        with open(audio_path, "wb") as f:
+            f.write(tts)
+
+        # 5. Отправка голосового ответа
+        with open(audio_path, "rb") as audio:
+            bot.send_voice(message.chat.id, audio)
+
+    except Exception as e:
+        bot.send_message(message.chat.id, f"Ошибка обработки голоса: <code>{e}</code>")
+
+# ------------------- Текстовые сообщения -------------------
 @bot.message_handler(func=lambda m: True)
 def handle_message(message):
     try:
@@ -58,5 +108,5 @@ def handle_message(message):
 
         bot.send_message(message.chat.id, f"<i>Ошибка:</i> <code>{e}</code>")
 
-# ---------- Запуск бота ----------
+# ------------------- Запуск -------------------
 bot.polling(none_stop=True)
