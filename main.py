@@ -27,7 +27,15 @@ def handle_message(message):
         bot.send_message(message.chat.id, answer)
 
     except Exception as e:
+        error_text = str(e)
+
+        if "429" in error_text or "rate_limit" in error_text:
+            bot.send_message(
+                message.chat.id,
+                "⚠️ Превышен лимит запросов к OpenAI. Подожди 20–30 секунд и попробуй снова."
+            )
+            return
+
         bot.send_message(message.chat.id, f"Ошибка: {e}")
 
-# Запуск
 bot.polling(none_stop=True)
