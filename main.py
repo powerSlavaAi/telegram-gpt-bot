@@ -1,14 +1,14 @@
-import asyncio
-import logging
 import os
-
-from aiogram import Bot, Dispatcher, types, Router
+import logging
+from aiogram import Bot, Dispatcher, types
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
-from aiogram.types import Message
+from aiogram import F
+from aiogram.utils.keyboard import ReplyKeyboardMarkup
+from aiogram.client.default import DefaultBotProperties
 
-from dotenv import load_dotenv
 from openai import OpenAI
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -17,38 +17,32 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 logging.basicConfig(level=logging.INFO)
 
-# Aiogram 3 объекты
-bot = Bot(token=TELEGRAM_TOKEN, parse_mode=ParseMode.HTML)
-dp = Dispatcher()
-router = Router()
-dp.include_router(router)
+# Новый формат инициализации!!!
+bot = Bot(
+    token=TELEGRAM_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+)
 
-# OpenAI client
+dp = Dispatcher()
+
 client = OpenAI(api_key=OPENAI_API_KEY)
 
+@dp.message(CommandStart())
+async def start(message: types.Message):
+    await message.answer("Привет! Я бот на базе GPT. Напиши мне что-нибудь.")
 
-@router.message(CommandStart())
-async def start_handler(message: Message):
-    await message.answer("Привет! Я GPT-бот. Напиши мне сообщение.")
-
-
-@router.message()
-async def handle_message(message: Message):
-    # Ответ от LLM
+@dp.message(F.text)
+async def handle_message(message: types.Message):
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "user", "content": message.text}
-        ]
+        messages=[{"role": "user", "content": message.text}]
     )
-
     answer = response.choices[0].message["content"]
     await message.answer(answer)
-
 
 async def main():
     await dp.start_polling(bot)
 
-
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
