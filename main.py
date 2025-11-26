@@ -44,7 +44,7 @@ def send_gpt_answer(chat_id, text):
 # ===============================
 #   Telegram Webhook endpoint
 # ===============================
-@app.route(f"/webhook", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook():
     update = request.get_data().decode("utf-8")
     bot.process_new_updates([telebot.types.Update.de_json(update)])
@@ -99,7 +99,7 @@ def handle_text(message):
 
 
 # ===============================
-#   Главная страница для проверки
+#   Главная страница
 # ===============================
 @app.route("/")
 def home():
@@ -107,5 +107,9 @@ def home():
 
 
 # ===============================
-#   Запуск Flask (Render сам вызывает)
+#   Установка webhook
 # ===============================
+WEBHOOK_URL = "https://telegram-gpt-bot-m6d8.onrender.com/webhook"
+
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
