@@ -1,6 +1,6 @@
 import os
 import telebot
-from telebot import types, apihelper
+from telebot import types
 from openai import OpenAI
 from dotenv import load_dotenv
 from telebot.types import BotCommand
@@ -24,21 +24,19 @@ def safe_send_message(chat_id, text, **kwargs):
     """
     try:
         return bot.send_message(chat_id, text, **kwargs)
-    except apihelper.ApiTelegramException as e:
+    except Exception as e:
         err = str(e)
 
-        # Ошибки "can't parse entities" / невалидные HTML-теги
+        # Ошибки HTML-разметки
         if ("can't parse entities" in err
             or "Unsupported start tag" in err
             or "Bad Request: can't parse entities" in err):
 
-            # Эскейпим текст, чтобы не падал
             safe_text = telebot.util.escape_html(text)
-
             return bot.send_message(chat_id, safe_text)
 
         else:
-            raise  # если ошибка другая — пробрасываем
+            raise
 
 
 # ==========================
@@ -106,12 +104,11 @@ def send_gpt_answer(chat_id, text):
     except Exception as e:
         error_text = str(e)
 
-        # Лимит OpenAI
         if "429" in error_text or "insufficient_quota" in error_text:
             safe_send_message(
                 chat_id,
                 "⚠️ <b>Лимит OpenAI исчерпан.</b>\n"
-                "Текстовые запросы стоят мало — попробуй чуть позже.",
+                "Попробуй позже.",
                 parse_mode="HTML"
             )
             return
@@ -123,12 +120,6 @@ def send_gpt_answer(chat_id, text):
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     send_gpt_answer(message.chat.id, message.text)
-
-
-# ---------- Голос отключён ----------
-# @bot.message_handler(content_types=['voice'])
-# def handle_voice(message):
-#     pass
 
 
 # ---------- Запуск бота ----------
